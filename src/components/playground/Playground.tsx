@@ -833,12 +833,25 @@ export default function Playground({
     });
   }, [responseTimes]);
 
-  const mobileTabs = useMemo<MobileTab[]>(() => [], []);
+  const mobileTabs = useMemo<MobileTab[]>(() => [{
+    title: "Interview",
+    content: (
+      <PlaygroundTile
+        title="Interview Session"
+        className="w-full h-full grow"
+        childrenClassName="justify-center"
+      >
+        <div className="p-4 text-white">
+          <p className="text-sm">Interview session in progress...</p>
+        </div>
+      </PlaygroundTile>
+    )
+  }], []);
 
-  // Add summary to mobile tabs
+  // Modify the summary effect to update existing tabs instead of pushing
   useEffect(() => {
-    if (transcriptionSummary && mobileTabs.length === 0) {
-      mobileTabs.push({
+    if (transcriptionSummary) {
+      const summaryTab = {
         title: "Summary",
         content: (
           <PlaygroundTile
@@ -850,8 +863,15 @@ export default function Playground({
               <p className="text-sm whitespace-pre-line">{transcriptionSummary}</p>
             </div>
           </PlaygroundTile>
-        ),
-      });
+        )
+      };
+      
+      const existingSummaryIndex = mobileTabs.findIndex(tab => tab.title === "Summary");
+      if (existingSummaryIndex === -1) {
+        mobileTabs.push(summaryTab);
+      } else {
+        mobileTabs[existingSummaryIndex] = summaryTab;
+      }
     }
   }, [transcriptionSummary, mobileTabs]);
 
