@@ -756,15 +756,8 @@ export default function Playground({
         <div className="flex gap-4 py-4 grow w-full">
           <div className="flex flex-col grow basis-2/3 gap-4 h-full">
             <PlaygroundTile
-              title="Video"
-              className="w-full h-1/2 grow"
-              childrenClassName="justify-center"
-            >
-              {videoTileContent}
-            </PlaygroundTile>
-            <PlaygroundTile
               title="Audio"
-              className="w-full h-1/2 grow"
+              className="w-full h-full grow"
               childrenClassName="justify-center"
             >
               {audioTileContent}
