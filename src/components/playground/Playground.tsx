@@ -98,17 +98,36 @@ export default function Playground({
   // Function to get native camera feed
   const startNativeCamera = async (): Promise<MediaStream> => {
     try {
+      // First check if camera is available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasCamera = devices.some(device => device.kind === 'videoinput');
+      
+      if (!hasCamera) {
+        throw new Error('No camera detected on your device.');
+      }
+
+      // Request camera with fallback options
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          facingMode: "user"
         } 
       });
+      
       setNativeVideoStream(stream);
       return stream;
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      throw new Error('Could not access camera. Please ensure camera permissions are granted.');
+    } catch (error: any) {
+      console.error('Camera access error:', error);
+      if (error.name === 'NotAllowedError') {
+        throw new Error('Camera access denied. Please allow camera access in your browser settings and refresh the page.');
+      } else if (error.name === 'NotFoundError') {
+        throw new Error('No camera found. Please ensure your camera is properly connected.');
+      } else if (error.name === 'NotReadableError') {
+        throw new Error('Camera is in use by another application. Please close other apps using the camera.');
+      } else {
+        throw new Error('Could not access camera. Please ensure your device has a working camera and try again.');
+      }
     }
   };
 
@@ -147,60 +166,69 @@ export default function Playground({
   }, []);
 
   const verifyDressCode = useCallback(async () => {
-    if (!nativeVideoStream) {
-      setToastMessage({
-        message: "Camera stream not available. Please ensure camera access is granted.",
-        type: "error"
-      });
-      return;
-    }
-
-    setIsDressCodeChecking(true);
     try {
-      const canvas = document.createElement('canvas');
-      const video = document.createElement('video');
-      video.srcObject = nativeVideoStream;
-      await new Promise(resolve => video.onloadedmetadata = resolve);
-      video.play();
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
-      
-      const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-      if (!imageBlob) throw new Error('Failed to capture image');
-
-      const formData = new FormData();
-      formData.append('image', imageBlob);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      try {
-        const response = await fetch('/api/verify-dress-code', {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+      if (!nativeVideoStream) {
+        const stream = await startNativeCamera();
+        if (!stream) {
+          setToastMessage({
+            message: "Unable to access camera. You may proceed with the interview, but please ensure camera access for future sessions.",
+            type: "error"
+          });
+          handleDressCodeFallback();
+          return;
         }
+      }
 
-        const data = await response.json();
-        handleDressCodeResponse(data);
+      setIsDressCodeChecking(true);
+      try {
+        const canvas = document.createElement('canvas');
+        const video = document.createElement('video');
+        video.srcObject = nativeVideoStream;
+        await new Promise(resolve => video.onloadedmetadata = resolve);
+        video.play();
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d')?.drawImage(video, 0, 0);
+        
+        const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+        if (!imageBlob) throw new Error('Failed to capture image');
+
+        const formData = new FormData();
+        formData.append('image', imageBlob);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+        try {
+          const response = await fetch('/api/verify-dress-code', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          handleDressCodeResponse(data);
+        } catch (error) {
+          console.error('API Error:', error);
+          // Fallback: Allow user to proceed with a warning
+          handleDressCodeFallback();
+        }
       } catch (error) {
-        console.error('API Error:', error);
-        // Fallback: Allow user to proceed with a warning
+        console.error('Error verifying dress code:', error);
         handleDressCodeFallback();
+      } finally {
+        setIsDressCodeChecking(false);
       }
     } catch (error) {
       console.error('Error verifying dress code:', error);
       handleDressCodeFallback();
-    } finally {
-      setIsDressCodeChecking(false);
     }
   }, [nativeVideoStream, setToastMessage]);
 
