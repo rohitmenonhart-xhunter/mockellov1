@@ -827,26 +827,33 @@ export default function Playground({
         <RegistrationForm onSubmit={handleRegistrationSubmit} />
       ) : (
         <div className="flex gap-4 py-4 grow w-full">
-          <div className="flex flex-col grow basis-2/3 gap-4 h-full">
+          {/* First column - Audio feed */}
+          <div className="flex flex-col basis-1/3 h-full">
             <PlaygroundTile
               title="Audio"
-              className="w-full h-full grow"
+              className="w-full h-full"
               childrenClassName="justify-center"
             >
               {audioTileContent}
             </PlaygroundTile>
           </div>
-          <div className="flex flex-col basis-1/3 gap-4">
+
+          {/* Second column - Fixed size chat */}
+          <div className="flex flex-col basis-1/3 h-full">
             <PlaygroundTile
               title="Chat"
-              className="w-full grow"
+              className="w-full h-full max-h-[calc(100vh-120px)] overflow-y-auto"
               childrenClassName="justify-start"
             >
               {chatTileContent}
             </PlaygroundTile>
+          </div>
+
+          {/* Third column - Settings and other content */}
+          <div className="flex flex-col basis-1/3 h-full">
             <PlaygroundTile
               title="Settings"
-              className="w-full"
+              className="w-full h-full"
               childrenClassName="justify-start"
             >
               {settingsTileContent}
