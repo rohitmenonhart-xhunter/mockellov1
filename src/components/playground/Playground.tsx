@@ -753,27 +753,78 @@ export default function Playground({
       {showRegistration ? (
         <RegistrationForm onSubmit={handleRegistrationSubmit} />
       ) : (
-        <div className="flex flex-col md:flex-row w-full grow">
-          <div className="flex flex-col w-full md:w-2/3 grow">
-            <PlaygroundTabbedTile
-              tabs={[
-                {
-                  title: "Video",
-                  content: videoTileContent,
-                },
-                {
-                  title: "Audio",
-                  content: audioTileContent,
-                },
-                {
-                  title: "Settings",
-                  content: settingsTileContent,
-                },
-              ]}
-            />
+        <div className="flex gap-4 py-4 grow w-full">
+          <div className="flex flex-col grow basis-2/3 gap-4 h-full">
+            <PlaygroundTile
+              title="Video"
+              className="w-full h-1/2 grow"
+              childrenClassName="justify-center"
+            >
+              {videoTileContent}
+            </PlaygroundTile>
+            <PlaygroundTile
+              title="Audio"
+              className="w-full h-1/2 grow"
+              childrenClassName="justify-center"
+            >
+              {audioTileContent}
+            </PlaygroundTile>
           </div>
-          <div className="flex flex-col w-full md:w-1/3">
-            {chatTileContent}
+          <div className="flex flex-col basis-1/3 gap-4">
+            <PlaygroundTile
+              title="Chat"
+              className="w-full grow"
+              childrenClassName="justify-start"
+            >
+              {chatTileContent}
+            </PlaygroundTile>
+            <PlaygroundTile
+              title="Settings"
+              className="w-full"
+              childrenClassName="justify-start"
+            >
+              {settingsTileContent}
+            </PlaygroundTile>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Modal */}
+      {transcriptionSummary && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center">
+          <div className="bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-white">HR Interview Feedback</h3>
+              <button 
+                onClick={() => setTranscriptionSummary("")}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-white whitespace-pre-line">
+              {transcriptionSummary}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button 
+                onClick={downloadFeedback}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Download Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isGeneratingSummary && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center">
+          <div className="bg-gray-900 p-8 rounded-lg shadow-xl text-center">
+            <LoadingSVG diameter={48} strokeWidth={4} />
+            <p className="text-white mt-4 text-lg font-semibold">Analyzing Interview Performance...</p>
+            <p className="text-gray-400 mt-2">Please wait while we evaluate your interview</p>
+            <p className="text-gray-500 mt-2">Time elapsed: {formatGenerationTime(generationTime)}</p>
           </div>
         </div>
       )}
