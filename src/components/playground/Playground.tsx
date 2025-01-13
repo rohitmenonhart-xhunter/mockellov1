@@ -147,145 +147,101 @@ export default function Playground({
   }, []);
 
   const verifyDressCode = useCallback(async () => {
-    try {
-      setIsDressCodeChecking(true);
-      setShowDressCodeModal(true);
-
-      // Start native camera
-      const stream = await startNativeCamera();
-      
-      // Create video element for preview
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.autoplay = true;
-      
-      // Wait for video to be ready
-      await new Promise<void>((resolve) => {
-        video.onloadedmetadata = () => {
-          video.play().then(() => resolve());
-        };
+    if (!nativeVideoStream) {
+      setToastMessage({
+        message: "Camera stream not available. Please ensure camera access is granted.",
+        type: "error"
       });
+      return;
+    }
 
-      // Give the camera a moment to adjust exposure/focus
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create a canvas to capture the frame
+    setIsDressCodeChecking(true);
+    try {
       const canvas = document.createElement('canvas');
+      const video = document.createElement('video');
+      video.srcObject = nativeVideoStream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+      video.play();
+      
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
+      canvas.getContext('2d')?.drawImage(video, 0, 0);
       
-      if (!ctx) {
-        throw new Error("Could not get canvas context");
-      }
-      
-      // Capture the frame
-      ctx.drawImage(video, 0, 0);
+      const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+      if (!imageBlob) throw new Error('Failed to capture image');
 
-      // Convert the canvas to base64 image
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const formData = new FormData();
+      formData.append('image', imageBlob);
 
-      // Send to our API
-      const response = await fetch('/api/verify-dress-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          imageUrl: imageDataUrl,
-          dressCodeStandards: {
-            male: [
-              "formal shirt",
-              "business shirt",
-              "dress shirt",
-              "button-up shirt",
-              "button-down shirt"
-            ],
-            female: [
-              "churidar",
-              "kurti",
-              "chudithar",
-              "formal suit",
-              "business suit",
-              "formal dress",
-              "saree",
-              "salwar"
-            ],
-            informal: [
-              "polo",
-              "polo shirt",
-              "t-shirt",
-              "tshirt",
-              "casual shirt",
-              "casual wear",
-              "casual dress",
-              "jeans",
-              "casual pants"
-            ]
-          }
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.details || data.error || `Server error: ${response.status}`);
-      }
-      
-      setDressCodeFeedback({
-        currentAttire: data.currentAttire,
-      });
-
-      if (data.isFormal) {
-        setIsDressCodeVerified(true);
-        setDressCodeMessage("Your attire meets formal standards. You may proceed with the interview.");
-        // Add formal dress code directly to transcriptions
-        setTranscripts(prevTranscripts => {
-          const updatedTranscripts = [...prevTranscripts, {
-            name: "HR Assistant",
-            message: `Dress Code Assessment: The candidate is in formal attire - ${data.currentAttire}. This meets our professional standards.`,
-            timestamp: new Date().getTime(),
-            isSelf: false
-          }];
-          localStorage.setItem('transcriptions', JSON.stringify(updatedTranscripts));
-          return updatedTranscripts;
+      try {
+        const response = await fetch('/api/verify-dress-code', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
         });
-        // Stop native camera before connecting to LiveKit
-        stopNativeCamera();
-        setTimeout(() => {
-          setShowDressCodeModal(false);
-          onConnect(true);
-        }, 3000);
-      } else {
-        setDressCodeMessage("We would recommend you to be in formals.");
-        // Add informal dress code directly to transcriptions
-        setTranscripts(prevTranscripts => {
-          const recommendationsText = data.recommendations ? 
-            `\nRecommendations: ${data.recommendations}` : '';
-          const updatedTranscripts = [...prevTranscripts, {
-            name: "HR Assistant",
-            message: `Dress Code Assessment: The candidate is in informal attire - ${data.currentAttire}. ${recommendationsText}`,
-            timestamp: new Date().getTime(),
-            isSelf: false
-          }];
-          localStorage.setItem('transcriptions', JSON.stringify(updatedTranscripts));
-          return updatedTranscripts;
-        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        handleDressCodeResponse(data);
+      } catch (error) {
+        console.error('API Error:', error);
+        // Fallback: Allow user to proceed with a warning
+        handleDressCodeFallback();
       }
     } catch (error) {
       console.error('Error verifying dress code:', error);
-      stopNativeCamera();
-      setToastMessage({
-        message: error instanceof Error ? `Failed to verify dress code: ${error.message}` : "Failed to verify dress code. Please try again.",
-        type: "error"
-      });
-      setTimeout(() => {
-        setShowDressCodeModal(false);
-      }, 3000);
+      handleDressCodeFallback();
     } finally {
       setIsDressCodeChecking(false);
     }
-  }, [onConnect, setToastMessage, stopNativeCamera]);
+  }, [nativeVideoStream, setToastMessage]);
+
+  // Add helper functions for handling dress code responses
+  const handleDressCodeResponse = useCallback((data: any) => {
+    setDressCodeFeedback(data);
+    if (data.isFormal) {
+      proceedWithInterview("Your attire meets formal standards. You may proceed with the interview.");
+    } else {
+      setDressCodeMessage("We recommend formal attire, but you may proceed with the interview.");
+      proceedWithInterview("Note: Please ensure formal attire for future interviews.");
+    }
+  }, []);
+
+  const handleDressCodeFallback = useCallback(() => {
+    setToastMessage({
+      message: "Dress code verification service unavailable. You may proceed with the interview.",
+      type: "error"
+    });
+    proceedWithInterview("Dress code verification skipped due to technical issues. Please ensure you are dressed professionally.");
+  }, [setToastMessage]);
+
+  const proceedWithInterview = useCallback((message: string) => {
+    setIsDressCodeVerified(true);
+    setDressCodeMessage(message);
+    setTranscripts(prevTranscripts => {
+      const updatedTranscripts = [...prevTranscripts, {
+        name: "HR Assistant",
+        message: message,
+        timestamp: new Date().getTime(),
+        isSelf: false
+      }];
+      localStorage.setItem('transcriptions', JSON.stringify(updatedTranscripts));
+      return updatedTranscripts;
+    });
+    stopNativeCamera();
+    setTimeout(() => {
+      setShowDressCodeModal(false);
+      onConnect(true);
+    }, 3000);
+  }, [onConnect, stopNativeCamera]);
 
   const handleRegistrationSubmit = (data: { registerNumber: string; name: string; sessionId: string }) => {
     setUserInfo(data);
