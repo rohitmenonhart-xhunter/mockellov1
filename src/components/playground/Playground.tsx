@@ -53,6 +53,33 @@ interface MobileTab {
   content: React.ReactNode;
 }
 
+const getRoomNumber = (role: string): string => {
+  const roleRoomMap: { [key: string]: string } = {
+    'Fullstack developer': '001',
+    'DevOps': '002',
+    'Frontend developer': '003',
+    'Backend developer': '004',
+    'Software Engineer': '005',
+    'Data Engineer': '006',
+    'Machine Learning Engineer': '007',
+    'Cloud Engineer': '008',
+    'System Administrator': '009',
+    'QA Engineer': '010',
+    'Electronics Engineer': '011',
+    'Electrical Engineer': '012',
+    'Mechanical Engineer': '013',
+    'Civil Engineer': '014',
+    'Product Manager': '015',
+    'Project Manager': '016',
+    'UI/UX Designer': '017',
+    'Database Administrator': '018',
+    'Security Engineer': '019',
+    'Network Engineer': '020'
+  };
+
+  return roleRoomMap[role] || '999'; // Default room if role not found
+};
+
 export default function Playground({
   logo,
   themeColors,
@@ -67,6 +94,7 @@ export default function Playground({
   const [generationTime, setGenerationTime] = useState(0);
   const [lastAIResponseTime, setLastAIResponseTime] = useState<number | null>(null);
   const [responseTimes, setResponseTimes] = useState<Array<{ aiMessage: string, responseTime: number }>>([]);
+  const [roomNumber, setRoomNumber] = useState<string>("");
 
   const { config, setUserSettings } = useConfig();
   const { setToastMessage } = useToast();
@@ -141,9 +169,18 @@ export default function Playground({
 
   const handleRegistrationSubmit = (data: { registerNumber: string; name: string; sessionId: string }) => {
     setUserInfo(data);
+    // Don't connect immediately, wait for role selection
     setShowRegistration(false);
-    onConnect(true);
   };
+
+  // Add new function to handle role selection
+  const handleRoleSelect = useCallback((role: string) => {
+    if (userInfo) {
+      const room = getRoomNumber(role);
+      setRoomNumber(room);
+      onConnect(true);
+    }
+  }, [userInfo, onConnect]);
 
   // Remove localStorage persistence on mount
   useEffect(() => {
@@ -529,6 +566,42 @@ export default function Playground({
   }, [config.settings.theme_color, voiceAssistant.audioTrack]);
 
   const settingsTileContent = useMemo(() => {
+    if (roomState === ConnectionState.Disconnected) {
+      return (
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-white text-sm">Select Role</label>
+            <select 
+              className="w-full px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-[#BE185D]"
+              onChange={(e) => handleRoleSelect(e.target.value)}
+              defaultValue=""
+            >
+              <option value="" disabled>Choose a role...</option>
+              <option value="Fullstack developer">Fullstack Developer</option>
+              <option value="DevOps">DevOps Engineer</option>
+              <option value="Frontend developer">Frontend Developer</option>
+              <option value="Backend developer">Backend Developer</option>
+              <option value="Software Engineer">Software Engineer</option>
+              <option value="Data Engineer">Data Engineer</option>
+              <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+              <option value="Cloud Engineer">Cloud Engineer</option>
+              <option value="System Administrator">System Administrator</option>
+              <option value="QA Engineer">QA Engineer</option>
+              <option value="Electronics Engineer">Electronics Engineer</option>
+              <option value="Electrical Engineer">Electrical Engineer</option>
+              <option value="Mechanical Engineer">Mechanical Engineer</option>
+              <option value="Civil Engineer">Civil Engineer</option>
+              <option value="Product Manager">Product Manager</option>
+              <option value="Project Manager">Project Manager</option>
+              <option value="UI/UX Designer">UI/UX Designer</option>
+              <option value="Database Administrator">Database Administrator</option>
+              <option value="Security Engineer">Security Engineer</option>
+              <option value="Network Engineer">Network Engineer</option>
+            </select>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
         {config.description && (
