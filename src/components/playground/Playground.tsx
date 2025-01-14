@@ -570,33 +570,13 @@ export default function Playground({
       return (
         <div className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-2">
-            <label className="text-white text-sm">Select Role</label>
+            <label className="text-white text-sm">Top right section tap on "select role" to select your room number</label>
             <select 
               className="w-full px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-[#BE185D]"
               onChange={(e) => handleRoleSelect(e.target.value)}
               defaultValue=""
             >
-              <option value="" disabled>Choose a role...</option>
-              <option value="Fullstack developer">Fullstack Developer</option>
-              <option value="DevOps">DevOps Engineer</option>
-              <option value="Frontend developer">Frontend Developer</option>
-              <option value="Backend developer">Backend Developer</option>
-              <option value="Software Engineer">Software Engineer</option>
-              <option value="Data Engineer">Data Engineer</option>
-              <option value="Machine Learning Engineer">Machine Learning Engineer</option>
-              <option value="Cloud Engineer">Cloud Engineer</option>
-              <option value="System Administrator">System Administrator</option>
-              <option value="QA Engineer">QA Engineer</option>
-              <option value="Electronics Engineer">Electronics Engineer</option>
-              <option value="Electrical Engineer">Electrical Engineer</option>
-              <option value="Mechanical Engineer">Mechanical Engineer</option>
-              <option value="Civil Engineer">Civil Engineer</option>
-              <option value="Product Manager">Product Manager</option>
-              <option value="Project Manager">Project Manager</option>
-              <option value="UI/UX Designer">UI/UX Designer</option>
-              <option value="Database Administrator">Database Administrator</option>
-              <option value="Security Engineer">Security Engineer</option>
-              <option value="Network Engineer">Network Engineer</option>
+             
             </select>
           </div>
         </div>
